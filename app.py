@@ -36,7 +36,7 @@ if st.button("送出", disabled=st.session_state["is_submit"]):
             out_path = "record.csv"
             record.to_csv(out_path, mode='a', header=not os.path.exists(out_path), index=False)
 
-            item_list.loc[item, "已募集"] = number
+            item_list.loc[item, "已募集"] += number
             item_list.loc[item, "剩餘數量"] -= number
             item_list.to_csv("data.csv")
 
