@@ -8,7 +8,6 @@ st.title("短宣募資")
 def load_data():
     data = pd.read_csv("data.csv")
     data.astype({"單價": int, "所需數量": int, "已募集": int, "剩餘數量": int})
-    data.sort_values(by="剩餘數量", ascending=False)
     return data
 
 if "is_submit" not in st.session_state:
@@ -24,8 +23,9 @@ item, team = re.split("（|）", item_name)[:2]
 item_id = item_list.index[(item_list["名稱"] == item) & (item_list["短宣隊"] == team)].item()
 
 # show details
-st.text(f"金額：${item_list.loc[item_id, '單價']}/個")
-st.text(f"剩餘：{item_list.loc[item_id, '剩餘數量']}個")
+st.text(f"名稱：{item_list.loc[item_id, '名稱']}")
+st.text(f"金額：${item_list.loc[item_id, '單價']}/份")
+st.text(f"剩餘：{item_list.loc[item_id, '剩餘數量']}份")
 st.text(item_list.loc[item_id, "短宣隊"])
 
 st.divider()
