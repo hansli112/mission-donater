@@ -3,6 +3,16 @@ import re
 import streamlit as st
 import pandas as pd
 
+st.set_page_config(page_title="短宣募資", layout="centered")
+st.markdown(
+    """
+    <style>
+    [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 st.title("短宣募資")
 
 def load_data():
