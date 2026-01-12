@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 
@@ -34,6 +35,8 @@ def load_data():
     return data
 
 def load_record():
+    if not os.path.exists("record.csv"):
+        return pd.DataFrame(columns=["姓名", "物資", "數量", "總金額", "短宣隊", "奉獻方式"])
     record = pd.read_csv("record.csv")
     if record.empty:
         return pd.DataFrame(columns=["姓名", "物資", "數量", "總金額", "短宣隊", "奉獻方式"])
