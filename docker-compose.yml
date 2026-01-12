@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  app:
+    image: hansli112/mission-donater
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data.csv:/app/data.csv
+      - ./record.csv:/app/record.csv
