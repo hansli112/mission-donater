@@ -51,6 +51,10 @@ RUN uv sync --frozen --no-dev
 
 COPY . .
 
+ENV UV_NO_SYNC=1 \
+    UV_PYTHON=/app/.venv/bin/python \
+    PATH="/app/.venv/bin:$PATH"
+
 EXPOSE 8501
 
-CMD ["uv", "run", "streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=8501"]
+CMD ["uv", "run", "--no-sync", "--python", "/app/.venv/bin/python", "streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=8501"]
