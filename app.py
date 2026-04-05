@@ -51,7 +51,7 @@ def get_supabase():
 
 def load_data():
     sb = get_supabase()
-    res = sb.table("items").select("id, 名稱, 短宣隊, 單價, 所需數量, 已募集, 剩餘數量").execute()
+    res = sb.table("items").select("id, 名稱, 短宣隊, 單價, 所需數量, 已募集, 剩餘數量").order("id").execute()
     if not res.data:
         return pd.DataFrame(columns=["id", "名稱", "短宣隊", "單價", "所需數量", "已募集", "剩餘數量"])
     return pd.DataFrame(res.data)
