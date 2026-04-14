@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>短宣募資</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0faf5; color: #1a1a1a; min-height: 100vh; }
+    .container { max-width: 680px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 24px; font-weight: 700; color: #1e4d35; margin-bottom: 20px; }
+    h2 { font-size: 16px; font-weight: 600; color: #2f6f4e; margin-bottom: 12px; }
+
+    /* table */
+    .table-wrap { overflow-x: auto; margin-bottom: 20px; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; }
+    th { background: #2f6f4e; color: #fff; padding: 10px 12px; text-align: left; font-weight: 600; }
+    td { padding: 9px 12px; border-bottom: 1px solid #e8f5ee; }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #f6fffb; }
+    .sold-out { color: #999; }
+
+    /* divider */
+    hr { border: none; border-top: 1px dashed #b2d8c5; margin: 20px 0; }
+
+    /* form */
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 14px; font-weight: 600; color: #2f6f4e; margin-bottom: 6px; }
+    input, select { width: 100%; padding: 10px 12px; border: 1.5px solid #b2d8c5; border-radius: 8px; font-size: 15px; background: #fff; outline: none; transition: border-color .15s; }
+    input:focus, select:focus { border-color: #2f6f4e; }
+    .hint { font-size: 13px; color: #666; margin-top: 5px; }
+    .hint.bank { background: #e8f5ee; border-radius: 6px; padding: 8px 10px; margin-top: 8px; color: #1e4d35; font-weight: 500; }
+
+    /* button */
+    button { width: 100%; padding: 12px; background: #2f6f4e; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background .15s; margin-top: 4px; }
+    button:hover { background: #1e4d35; }
+    button:disabled { background: #9cc4b0; cursor: not-allowed; }
+
+    /* alerts */
+    .alert { padding: 12px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
+    .alert-error { background: #fde8e8; color: #8b1a1a; border: 1px solid #f5c0c0; }
+    .alert-warning { background: #fff8e1; color: #7a5c00; border: 1px solid #ffe082; }
+
+    /* receipt */
+    .receipt { border: 2px dashed #2f6f4e; background: #f6fffb; padding: 16px 18px; border-radius: 12px; box-shadow: 0 6px 18px rgba(47,111,78,.15); margin-top: 16px; }
+    .receipt h3 { font-size: 18px; color: #1e4d35; margin-bottom: 12px; }
+    .receipt-row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px dashed rgba(47,111,78,.2); font-size: 15px; }
+    .receipt-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .receipt-row .lbl { color: #2f6f4e; font-weight: 600; }
+
+    .loading { text-align: center; color: #2f6f4e; padding: 20px; font-size: 15px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>短宣募資</h1>
+  <div id="app">
+    <div class="loading">載入中...</div>
+  </div>
+</div>
+
+<script>
+let items = [];
+let receipt = null;
+
+async function loadItems() {
+  const res = await fetch('/api/items');
+  if (!res.ok) throw new Error('無法載入項目');
+  return res.json();
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function render() {
+  const app = document.getElementById('app');
+  const available = items.filter(it => it['剩餘數量'] > 0);
+
+  let html = '';
+
+  if (items.length > 0) {
+    html += `<h2>認獻項目一覽</h2><div class="table-wrap"><table>
+      <thead><tr><th>名稱</th><th>短宣隊</th><th>單價</th><th>所需</th><th>已募集</th><th>剩餘</th></tr></thead><tbody>`;
+    for (const it of items) {
+      const sold = it['剩餘數量'] === 0;
+      html += `<tr class="${sold ? 'sold-out' : ''}">
+        <td>${escHtml(it['名稱'])}</td><td>${escHtml(it['短宣隊'])}</td>
+        <td>$${it['單價']}</td><td>${it['所需數量']}</td>
+        <td>${it['已募集']}</td><td>${it['剩餘數量']}</td>
+      </tr>`;
+    }
+    html += '</tbody></table></div><hr>';
+  }
+
+  if (receipt) {
+    html += `<div class="receipt">
+      <h3>成功送出</h3>
+      <div class="receipt-row"><span class="lbl">姓名</span><span>${escHtml(receipt['姓名'])}</span></div>
+      <div class="receipt-row"><span class="lbl">物資</span><span>${escHtml(receipt['物資'])}（${escHtml(receipt['短宣隊'])}）</span></div>
+      <div class="receipt-row"><span class="lbl">數量</span><span>${receipt['數量']}</span></div>
+      <div class="receipt-row"><span class="lbl">奉獻方式</span><span>${escHtml(receipt['奉獻方式'])}</span></div>
+      <div class="receipt-row"><span class="lbl">總金額</span><span>$${receipt['總金額']}</span></div>
+    </div>`;
+    app.innerHTML = html;
+    return;
+  }
+
+  if (available.length === 0) {
+    html += `<div class="alert alert-warning">目前沒有可選的認獻項目</div>`;
+    app.innerHTML = html;
+    return;
+  }
+
+  html += `<div id="error-msg"></div>
+  <div class="form-group">
+    <label for="name">姓名</label>
+    <input type="text" id="name" placeholder="請輸入姓名">
+  </div>
+  <div class="form-group">
+    <label for="item-select">物資</label>
+    <select id="item-select">`;
+  for (const it of available) {
+    html += `<option value="${escHtml(it['名稱'])}|${escHtml(it['短宣隊'])}">${escHtml(it['名稱'])}（${escHtml(it['短宣隊'])}）</option>`;
+  }
+  html += `</select>
+  </div>
+  <div id="item-info" class="hint"></div>
+  <hr>
+  <div class="form-group">
+    <label for="payment">奉獻方式</label>
+    <select id="payment">
+      <option value="現金">現金</option>
+      <option value="銀行轉帳">銀行轉帳</option>
+    </select>
+  </div>
+  <div id="bank-hint" class="hint bank" style="display:none">請轉至：國泰世華 (013) 127506314089</div>
+  <div class="form-group">
+    <label for="qty">數量</label>
+    <input type="number" id="qty" min="1" value="1">
+  </div>
+  <div id="total-hint" class="hint"></div>
+  <button id="submit-btn" onclick="submitDonation()">送出</button>`;
+
+  app.innerHTML = html;
+  updateItemInfo();
+  document.getElementById('item-select').addEventListener('change', updateItemInfo);
+  document.getElementById('qty').addEventListener('input', updateTotal);
+  document.getElementById('payment').addEventListener('change', () => {
+    const bankHint = document.getElementById('bank-hint');
+    if (bankHint) bankHint.style.display = document.getElementById('payment').value === '銀行轉帳' ? 'block' : 'none';
+  });
+}
+
+function getSelectedItem() {
+  const sel = document.getElementById('item-select');
+  if (!sel) return null;
+  const [name, team] = sel.value.split('|');
+  return items.find(it => it['名稱'] === name && it['短宣隊'] === team);
+}
+
+function updateItemInfo() {
+  const it = getSelectedItem();
+  const info = document.getElementById('item-info');
+  const qty = document.getElementById('qty');
+  if (!it || !info || !qty) return;
+  info.textContent = `金額：$${it['單價']}/份　剩餘：${it['剩餘數量']} 份`;
+  qty.max = it['剩餘數量'];
+  updateTotal();
+}
+
+function updateTotal() {
+  const it = getSelectedItem();
+  const qtyEl = document.getElementById('qty');
+  const hint = document.getElementById('total-hint');
+  if (!it || !qtyEl || !hint) return;
+  const qty = parseInt(qtyEl.value) || 0;
+  hint.textContent = `總金額：$${it['單價'] * qty}`;
+}
+
+async function submitDonation() {
+  const nameEl = document.getElementById('name');
+  const qtyEl = document.getElementById('qty');
+  const paymentEl = document.getElementById('payment');
+  const errEl = document.getElementById('error-msg');
+  const btn = document.getElementById('submit-btn');
+
+  errEl.innerHTML = '';
+  const it = getSelectedItem();
+  if (!it) { showError('錯誤，請選擇物資'); return; }
+
+  const name = nameEl.value.trim();
+  const qty = parseInt(qtyEl.value);
+  const payment = paymentEl.value;
+
+  if (!name) { showError('錯誤，請輸入姓名'); return; }
+  if (!qty || qty <= 0 || qty > it['剩餘數量']) { showError('錯誤，請檢查數量'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '送出中...';
+  try {
+    const res = await fetch('/api/donate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 姓名: name, 物資: it['名稱'], 短宣隊: it['短宣隊'], 數量: qty, 奉獻方式: payment }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) { showError(data.error || '送出失敗，請再試一次'); return; }
+    receipt = data.receipt;
+    items = await loadItems();
+    render();
+  } catch (e) {
+    showError('網路錯誤，請再試一次');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '送出'; }
+  }
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  if (el) el.innerHTML = `<div class="alert alert-error">${escHtml(msg)}</div>`;
+}
+
+(async () => {
+  try {
+    items = await loadItems();
+    render();
+  } catch (e) {
+    document.getElementById('app').innerHTML =
+      `<div class="alert alert-error">載入失敗：${escHtml(e.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

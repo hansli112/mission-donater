@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>短宣認獻管理</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0faf5; color: #1a1a1a; min-height: 100vh; }
+    .container { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 22px; font-weight: 700; color: #1e4d35; margin-bottom: 20px; }
+    h2 { font-size: 16px; font-weight: 600; color: #2f6f4e; margin: 20px 0 10px; }
+
+    /* password modal */
+    #pw-modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 100; }
+    .pw-box { background: #fff; border-radius: 14px; padding: 28px 24px; width: 320px; box-shadow: 0 8px 30px rgba(0,0,0,.2); }
+    .pw-box h2 { color: #1e4d35; margin-bottom: 14px; }
+    .pw-box input { width: 100%; padding: 10px 12px; border: 1.5px solid #b2d8c5; border-radius: 8px; font-size: 15px; outline: none; margin-bottom: 12px; }
+    .pw-box input:focus { border-color: #2f6f4e; }
+    .pw-box button { width: 100%; }
+    #pw-error { color: #8b1a1a; font-size: 13px; margin-bottom: 8px; }
+
+    /* tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid #b2d8c5; }
+    .tab { padding: 9px 18px; cursor: pointer; border-radius: 8px 8px 0 0; font-size: 14px; font-weight: 600; color: #2f6f4e; background: transparent; border: none; transition: background .12s; }
+    .tab.active { background: #2f6f4e; color: #fff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* table */
+    .table-wrap { overflow-x: auto; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; }
+    th { background: #2f6f4e; color: #fff; padding: 10px 12px; text-align: left; font-weight: 600; }
+    td { padding: 8px 12px; border-bottom: 1px solid #e8f5ee; }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #f6fffb; }
+
+    /* form */
+    hr { border: none; border-top: 1px dashed #b2d8c5; margin: 20px 0; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #2f6f4e; margin-bottom: 5px; }
+    input[type=text], input[type=number], select { width: 100%; padding: 9px 12px; border: 1.5px solid #b2d8c5; border-radius: 8px; font-size: 14px; background: #fff; outline: none; }
+    input:focus, select:focus { border-color: #2f6f4e; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* buttons */
+    .btn { padding: 10px 18px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .12s; }
+    .btn-primary { background: #2f6f4e; color: #fff; }
+    .btn-primary:hover { background: #1e4d35; }
+    .btn-primary:disabled { background: #9cc4b0; cursor: not-allowed; }
+    .btn-danger { background: #c0392b; color: #fff; }
+    .btn-danger:hover { background: #922b21; }
+    .btn-danger:disabled { background: #e0a0a0; cursor: not-allowed; }
+
+    /* alerts */
+    .alert { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin: 10px 0; }
+    .alert-success { background: #e8f5ee; color: #1e4d35; border: 1px solid #a3d8b8; }
+    .alert-error { background: #fde8e8; color: #8b1a1a; border: 1px solid #f5c0c0; }
+    .alert-info { background: #e8f4fd; color: #1a5276; border: 1px solid #aed6f1; }
+    .loading { text-align: center; color: #2f6f4e; padding: 20px; }
+  </style>
+</head>
+<body>
+
+<!-- Password modal -->
+<div id="pw-modal">
+  <div class="pw-box">
+    <h2>管理員登入</h2>
+    <div id="pw-error"></div>
+    <input type="password" id="pw-input" placeholder="請輸入密碼" onkeydown="if(event.key==='Enter')login()">
+    <button class="btn btn-primary" onclick="login()" style="width:100%">登入</button>
+  </div>
+</div>
+
+<div class="container" id="main" style="display:none">
+  <h1>短宣認獻管理</h1>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('overview')">總覽</button>
+    <button class="tab" onclick="switchTab('manage')">管理項目</button>
+    <button class="tab" onclick="switchTab('records')">管理認獻</button>
+  </div>
+
+  <!-- 總覽 -->
+  <div id="tab-overview" class="tab-panel active">
+    <h2>認獻項目</h2>
+    <div id="ov-items"><div class="loading">載入中...</div></div>
+    <h2>認獻清單</h2>
+    <div id="ov-records"><div class="loading">載入中...</div></div>
+  </div>
+
+  <!-- 管理項目 -->
+  <div id="tab-manage" class="tab-panel">
+    <h2>項目清單</h2>
+    <div id="mg-items"><div class="loading">載入中...</div></div>
+
+    <hr>
+    <h2>新增項目</h2>
+    <div id="add-msg"></div>
+    <div class="row2">
+      <div class="form-group"><label>物資名稱</label><input type="text" id="add-name" placeholder="例如：孩子禮物"></div>
+      <div class="form-group"><label>短宣隊</label><input type="text" id="add-team" placeholder="例如：肯亞短宣"></div>
+    </div>
+    <div class="row2">
+      <div class="form-group"><label>單價</label><input type="number" id="add-price" min="1" placeholder="0"></div>
+      <div class="form-group"><label>所需數量</label><input type="number" id="add-required" min="1" value="1"></div>
+    </div>
+    <button class="btn btn-primary" id="add-btn" onclick="addItem()">新增</button>
+
+    <hr>
+    <h2>刪除項目</h2>
+    <div id="del-msg"></div>
+    <div class="form-group"><label>選擇項目</label><select id="del-select"></select></div>
+    <div id="del-info" class="alert alert-info" style="display:none"></div>
+    <button class="btn btn-danger" id="del-btn" onclick="deleteItem()" style="margin-top:8px">刪除</button>
+  </div>
+
+  <!-- 管理認獻 -->
+  <div id="tab-records" class="tab-panel">
+    <h2>認獻紀錄</h2>
+    <div id="rec-list"><div class="loading">載入中...</div></div>
+
+    <div id="rec-edit-section" style="display:none">
+      <hr>
+      <h2>編輯認獻紀錄</h2>
+      <div id="edit-msg"></div>
+      <div class="form-group"><label>選擇紀錄</label><select id="rec-select" onchange="onRecordSelect()"></select></div>
+      <div class="row2">
+        <div class="form-group"><label>姓名</label><input type="text" id="edit-name"></div>
+        <div class="form-group"><label>物資（短宣隊）</label><select id="edit-item"></select></div>
+      </div>
+      <div class="row2">
+        <div class="form-group"><label>數量</label><input type="number" id="edit-qty" min="1"></div>
+        <div class="form-group"><label>奉獻方式</label>
+          <select id="edit-payment">
+            <option value="現金">現金</option>
+            <option value="銀行轉帳">銀行轉帳</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button class="btn btn-primary" id="save-btn" onclick="saveRecord()">儲存變更</button>
+        <button class="btn btn-danger" id="del-rec-btn" onclick="deleteRecord()">刪除這筆紀錄</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let adminPw = '';
+let items = [], records = [];
+
+// ── auth ──────────────────────────────────────────────
+async function login() {
+  const pw = document.getElementById('pw-input').value;
+  const errEl = document.getElementById('pw-error');
+  errEl.textContent = '';
+  try {
+    const res = await fetch('/api/records', { headers: { 'X-Admin-Password': pw } });
+    if (res.status === 401) { errEl.textContent = '密碼錯誤'; return; }
+    if (!res.ok) { errEl.textContent = '伺服器錯誤，請稍後再試'; return; }
+    adminPw = pw;
+    document.getElementById('pw-modal').style.display = 'none';
+    document.getElementById('main').style.display = 'block';
+    records = await res.json();
+    items = await apiFetch('/api/items', 'GET');
+    renderAll();
+  } catch (e) {
+    errEl.textContent = '連線失敗，請稍後再試';
+  }
+}
+
+async function apiFetch(url, method, body) {
+  const opts = { method, headers: { 'X-Admin-Password': adminPw, 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || '操作失敗');
+  return data;
+}
+
+// ── tabs ──────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', ['overview','manage','records'][i] === name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+// ── render ────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function itemsTable(rows) {
+  if (!rows.length) return '<div class="alert alert-info">目前沒有認獻項目</div>';
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>名稱</th><th>短宣隊</th><th>單價</th><th>所需</th><th>已募集</th><th>剩餘</th></tr></thead>
+    <tbody>${rows.map(it => `<tr><td>${escHtml(it['名稱'])}</td><td>${escHtml(it['短宣隊'])}</td>
+      <td>$${it['單價']}</td><td>${it['所需數量']}</td><td>${it['已募集']}</td><td>${it['剩餘數量']}</td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function recordsTable(rows) {
+  if (!rows.length) return '<div class="alert alert-info">目前沒有認獻紀錄</div>';
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>姓名</th><th>物資</th><th>短宣隊</th><th>數量</th><th>總金額</th><th>奉獻方式</th></tr></thead>
+    <tbody>${rows.map((r, i) => `<tr><td>${i+1}</td><td>${escHtml(r['姓名'])}</td><td>${escHtml(r['物資'])}</td>
+      <td>${escHtml(r['短宣隊'])}</td><td>${r['數量']}</td><td>$${r['總金額']}</td><td>${escHtml(r['奉獻方式'])}</td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function renderAll() {
+  // 總覽
+  document.getElementById('ov-items').innerHTML = itemsTable(items);
+  document.getElementById('ov-records').innerHTML = recordsTable(records);
+
+  // 管理項目
+  document.getElementById('mg-items').innerHTML = itemsTable(items);
+  const delSel = document.getElementById('del-select');
+  delSel.innerHTML = items.map(it =>
+    `<option value="${escHtml(it['id'])}">${escHtml(it['名稱'])}（${escHtml(it['短宣隊'])}）</option>`
+  ).join('');
+  updateDelInfo();
+  delSel.addEventListener('change', updateDelInfo);
+
+  // 管理認獻
+  document.getElementById('rec-list').innerHTML = recordsTable(records);
+  const recSection = document.getElementById('rec-edit-section');
+  recSection.style.display = records.length ? 'block' : 'none';
+
+  if (records.length) {
+    const recSel = document.getElementById('rec-select');
+    recSel.innerHTML = records.map((r, i) =>
+      `<option value="${r['id']}">${i+1}. ${escHtml(r['姓名'])} - ${escHtml(r['物資'])}（${escHtml(r['短宣隊'])}）x${r['數量']}</option>`
+    ).join('');
+    buildEditItemSelect();
+    onRecordSelect();
+  }
+}
+
+function updateDelInfo() {
+  const id = parseInt(document.getElementById('del-select').value);
+  const it = items.find(i => i['id'] === id);
+  const info = document.getElementById('del-info');
+  if (!it) { info.style.display = 'none'; return; }
+  info.style.display = 'block';
+  info.textContent = `所需：${it['所需數量']}，已募集：${it['已募集']}，剩餘：${it['剩餘數量']}`;
+}
+
+function buildEditItemSelect() {
+  const sel = document.getElementById('edit-item');
+  sel.innerHTML = items.map(it =>
+    `<option value="${escHtml(it['名稱'])}|${escHtml(it['短宣隊'])}">${escHtml(it['名稱'])}（${escHtml(it['短宣隊'])}）</option>`
+  ).join('');
+}
+
+function onRecordSelect() {
+  const id = parseInt(document.getElementById('rec-select').value);
+  const rec = records.find(r => r['id'] === id);
+  if (!rec) return;
+  document.getElementById('edit-name').value = rec['姓名'];
+  document.getElementById('edit-qty').value = rec['數量'];
+  document.getElementById('edit-payment').value = rec['奉獻方式'];
+  const itemSel = document.getElementById('edit-item');
+  const val = `${rec['物資']}|${rec['短宣隊']}`;
+  for (const opt of itemSel.options) if (opt.value === val) { itemSel.value = val; break; }
+}
+
+// ── actions ───────────────────────────────────────────
+async function addItem() {
+  const btn = document.getElementById('add-btn');
+  const msgEl = document.getElementById('add-msg');
+  msgEl.innerHTML = '';
+  const 名稱 = document.getElementById('add-name').value.trim();
+  const 短宣隊 = document.getElementById('add-team').value.trim();
+  const 單價 = parseInt(document.getElementById('add-price').value);
+  const 所需數量 = parseInt(document.getElementById('add-required').value);
+
+  if (!名稱 || !短宣隊 || !單價 || 單價 <= 0 || !所需數量 || 所需數量 <= 0) {
+    msgEl.innerHTML = '<div class="alert alert-error">請檢查名稱、短宣隊、單價或所需數量</div>'; return;
+  }
+  btn.disabled = true;
+  try {
+    await apiFetch('/api/items', 'POST', { 名稱, 短宣隊, 單價, 所需數量 });
+    msgEl.innerHTML = '<div class="alert alert-success">已新增認獻項目</div>';
+    ['add-name','add-team'].forEach(id => document.getElementById(id).value = '');
+    ['add-price'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('add-required').value = '1';
+    await refresh();
+  } catch (e) {
+    msgEl.innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
+  } finally { btn.disabled = false; }
+}
+
+async function deleteItem() {
+  const btn = document.getElementById('del-btn');
+  const msgEl = document.getElementById('del-msg');
+  msgEl.innerHTML = '';
+  const id = parseInt(document.getElementById('del-select').value);
+  if (!confirm('確定要刪除這個項目嗎？')) return;
+  btn.disabled = true;
+  try {
+    await apiFetch(`/api/items/${id}`, 'DELETE');
+    msgEl.innerHTML = '<div class="alert alert-success">已刪除認獻項目</div>';
+    await refresh();
+  } catch (e) {
+    msgEl.innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
+  } finally { btn.disabled = false; }
+}
+
+async function saveRecord() {
+  const btn = document.getElementById('save-btn');
+  const msgEl = document.getElementById('edit-msg');
+  msgEl.innerHTML = '';
+
+  const id = parseInt(document.getElementById('rec-select').value);
+  const rec = records.find(r => r['id'] === id);
+  if (!rec) return;
+
+  const 姓名 = document.getElementById('edit-name').value.trim();
+  const [物資, 短宣隊] = document.getElementById('edit-item').value.split('|');
+  const 數量 = parseInt(document.getElementById('edit-qty').value);
+  const 奉獻方式 = document.getElementById('edit-payment').value;
+
+  if (!姓名 || !數量 || 數量 <= 0) {
+    msgEl.innerHTML = '<div class="alert alert-error">請檢查姓名或數量</div>'; return;
+  }
+  btn.disabled = true;
+  try {
+    await apiFetch(`/api/records/${id}`, 'PUT', {
+      姓名, 物資, 短宣隊, 數量, 奉獻方式,
+      old物資: rec['物資'], old短宣隊: rec['短宣隊'], old數量: rec['數量'],
+    });
+    msgEl.innerHTML = '<div class="alert alert-success">已更新認獻紀錄</div>';
+    await refresh();
+  } catch (e) {
+    msgEl.innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
+  } finally { btn.disabled = false; }
+}
+
+async function deleteRecord() {
+  const btn = document.getElementById('del-rec-btn');
+  const msgEl = document.getElementById('edit-msg');
+  msgEl.innerHTML = '';
+
+  const id = parseInt(document.getElementById('rec-select').value);
+  const rec = records.find(r => r['id'] === id);
+  if (!rec) return;
+  if (!confirm('確定要刪除這筆認獻紀錄嗎？')) return;
+
+  btn.disabled = true;
+  try {
+    await apiFetch(`/api/records/${id}`, 'DELETE', {
+      物資: rec['物資'], 短宣隊: rec['短宣隊'], 數量: rec['數量'],
+    });
+    msgEl.innerHTML = '<div class="alert alert-success">已刪除認獻紀錄</div>';
+    await refresh();
+  } catch (e) {
+    msgEl.innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
+  } finally { btn.disabled = false; }
+}
+
+async function refresh() {
+  [items, records] = await Promise.all([
+    apiFetch('/api/items', 'GET'),
+    apiFetch('/api/records', 'GET'),
+  ]);
+  renderAll();
+}
+</script>
+</body>
+</html>
