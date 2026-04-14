@@ -1,3 +1,4 @@
+import httpx
 import streamlit as st
 import pandas as pd
 from supabase import create_client
@@ -30,25 +31,39 @@ if st.session_state.get("clear_add_inputs"):
     st.session_state["clear_add_inputs"] = False
 
 
-@st.cache_resource
+@st.cache_resource(ttl=600)
 def get_supabase():
     return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 
 
 def load_data():
-    sb = get_supabase()
-    res = sb.table("items").select("id, 名稱, 短宣隊, 單價, 所需數量, 已募集, 剩餘數量").order("id").execute()
-    if not res.data:
-        return pd.DataFrame(columns=["id", "名稱", "短宣隊", "單價", "所需數量", "已募集", "剩餘數量"])
-    return pd.DataFrame(res.data)
+    for attempt in range(2):
+        try:
+            sb = get_supabase()
+            res = sb.table("items").select("id, 名稱, 短宣隊, 單價, 所需數量, 已募集, 剩餘數量").order("id").execute()
+            if not res.data:
+                return pd.DataFrame(columns=["id", "名稱", "短宣隊", "單價", "所需數量", "已募集", "剩餘數量"])
+            return pd.DataFrame(res.data)
+        except httpx.TransportError:
+            if attempt == 0:
+                get_supabase.clear()
+            else:
+                raise
 
 
 def load_record():
-    sb = get_supabase()
-    res = sb.table("records").select("id, 姓名, 物資, 數量, 總金額, 短宣隊, 奉獻方式").order("id").execute()
-    if not res.data:
-        return pd.DataFrame(columns=["id", "姓名", "物資", "數量", "總金額", "短宣隊", "奉獻方式"])
-    return pd.DataFrame(res.data)
+    for attempt in range(2):
+        try:
+            sb = get_supabase()
+            res = sb.table("records").select("id, 姓名, 物資, 數量, 總金額, 短宣隊, 奉獻方式").order("id").execute()
+            if not res.data:
+                return pd.DataFrame(columns=["id", "姓名", "物資", "數量", "總金額", "短宣隊", "奉獻方式"])
+            return pd.DataFrame(res.data)
+        except httpx.TransportError:
+            if attempt == 0:
+                get_supabase.clear()
+            else:
+                raise
 
 
 data = load_data()

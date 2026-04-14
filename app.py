@@ -1,4 +1,6 @@
+import html
 import re
+import httpx
 import streamlit as st
 import pandas as pd
 from supabase import create_client
@@ -44,17 +46,24 @@ st.markdown(
 st.title("短宣募資")
 
 
-@st.cache_resource
+@st.cache_resource(ttl=600)
 def get_supabase():
     return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 
 
 def load_data():
-    sb = get_supabase()
-    res = sb.table("items").select("id, 名稱, 短宣隊, 單價, 所需數量, 已募集, 剩餘數量").order("id").execute()
-    if not res.data:
-        return pd.DataFrame(columns=["id", "名稱", "短宣隊", "單價", "所需數量", "已募集", "剩餘數量"])
-    return pd.DataFrame(res.data)
+    for attempt in range(2):
+        try:
+            sb = get_supabase()
+            res = sb.table("items").select("id, 名稱, 短宣隊, 單價, 所需數量, 已募集, 剩餘數量").order("id").execute()
+            if not res.data:
+                return pd.DataFrame(columns=["id", "名稱", "短宣隊", "單價", "所需數量", "已募集", "剩餘數量"])
+            return pd.DataFrame(res.data)
+        except httpx.TransportError:
+            if attempt == 0:
+                get_supabase.clear()
+            else:
+                raise
 
 
 if "receipt" not in st.session_state:
@@ -64,8 +73,8 @@ if "error" not in st.session_state:
 
 
 def submit_donation():
-    sb = get_supabase()
     item_list = load_data()
+    sb = get_supabase()
     if item_list.empty:
         st.session_state["error"] = "目前沒有可選的認獻項目"
         return
@@ -117,13 +126,19 @@ def submit_donation():
 
 
 item_list = load_data()
-if item_list.empty:
+available = item_list[item_list["剩餘數量"] > 0]
+
+if not item_list.empty:
+    st.dataframe(item_list.drop(columns=["id"]), hide_index=True)
+    st.divider()
+
+if (item_list.empty or available.empty) and not st.session_state.get("receipt"):
     st.warning("目前沒有可選的認獻項目")
     st.stop()
 
 # get info
 name = st.text_input(label="姓名", placeholder="請輸入姓名", key="name")
-item_names = [f"{name}（{team}）" for name, team in zip(item_list["名稱"], item_list["短宣隊"])]
+item_names = [f"{name}（{team}）" for name, team in zip(available["名稱"], available["短宣隊"])]
 if "item_name" not in st.session_state or st.session_state["item_name"] not in item_names:
     st.session_state["item_name"] = item_names[0]
 item_name = st.selectbox("物資", item_names, key="item_name")
@@ -154,10 +169,10 @@ if st.session_state["receipt"]:
         f"""
         <div class="receipt">
             <h3>成功送出</h3>
-            <div class="row"><span class="label">姓名</span><span>{receipt["姓名"]}</span></div>
-            <div class="row"><span class="label">物資</span><span>{receipt["物資"]}（{receipt["短宣隊"]}）</span></div>
+            <div class="row"><span class="label">姓名</span><span>{html.escape(receipt["姓名"])}</span></div>
+            <div class="row"><span class="label">物資</span><span>{html.escape(receipt["物資"])}（{html.escape(receipt["短宣隊"])}）</span></div>
             <div class="row"><span class="label">數量</span><span>{receipt["數量"]}</span></div>
-            <div class="row"><span class="label">奉獻方式</span><span>{receipt["奉獻方式"]}</span></div>
+            <div class="row"><span class="label">奉獻方式</span><span>{html.escape(receipt["奉獻方式"])}</span></div>
             <div class="row"><span class="label">總金額</span><span>${receipt["總金額"]}</span></div>
         </div>
         """,
