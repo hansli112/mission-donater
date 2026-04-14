@@ -1,9 +1,7 @@
 import html
 import re
-import httpx
 import streamlit as st
-import pandas as pd
-from supabase import create_client
+import db
 
 st.set_page_config(page_title="短宣募資", layout="centered")
 st.markdown(
@@ -45,27 +43,6 @@ st.markdown(
 
 st.title("短宣募資")
 
-
-@st.cache_resource(ttl=600)
-def get_supabase():
-    return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
-
-
-def load_data():
-    for attempt in range(2):
-        try:
-            sb = get_supabase()
-            res = sb.table("items").select("id, 名稱, 短宣隊, 單價, 所需數量, 已募集, 剩餘數量").order("id").execute()
-            if not res.data:
-                return pd.DataFrame(columns=["id", "名稱", "短宣隊", "單價", "所需數量", "已募集", "剩餘數量"])
-            return pd.DataFrame(res.data)
-        except httpx.TransportError:
-            if attempt == 0:
-                get_supabase.clear()
-            else:
-                raise
-
-
 if "receipt" not in st.session_state:
     st.session_state["receipt"] = None
 if "error" not in st.session_state:
@@ -73,8 +50,7 @@ if "error" not in st.session_state:
 
 
 def submit_donation():
-    item_list = load_data()
-    sb = get_supabase()
+    item_list = db.load_items()
     if item_list.empty:
         st.session_state["error"] = "目前沒有可選的認獻項目"
         return
@@ -98,18 +74,11 @@ def submit_donation():
     total_money = int(item_list.loc[item_idx, "單價"]) * number
     item_db_id = int(item_list.loc[item_idx, "id"])
 
-    sb.table("records").insert({
-        "姓名": name,
-        "物資": item,
-        "數量": number,
-        "總金額": total_money,
-        "短宣隊": team,
-        "奉獻方式": payment,
-    }).execute()
+    db.insert_record(name, item, number, total_money, team, payment)
 
     new_raised = int(item_list.loc[item_idx, "已募集"]) + number
     new_remaining = int(item_list.loc[item_idx, "剩餘數量"]) - number
-    sb.table("items").update({"已募集": new_raised, "剩餘數量": new_remaining}).eq("id", item_db_id).execute()
+    db.update_item_counts(item_db_id, new_raised, new_remaining)
 
     st.session_state["receipt"] = {
         "姓名": name,
@@ -125,7 +94,7 @@ def submit_donation():
     st.session_state["payment"] = "現金"
 
 
-item_list = load_data()
+item_list = db.load_items()
 available = item_list[item_list["剩餘數量"] > 0]
 
 if not item_list.empty:

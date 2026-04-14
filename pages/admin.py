@@ -1,7 +1,5 @@
-import httpx
 import streamlit as st
-import pandas as pd
-from supabase import create_client
+import db
 
 st.set_page_config(page_title="短宣認獻管理", layout="centered")
 st.markdown(
@@ -31,43 +29,8 @@ if st.session_state.get("clear_add_inputs"):
     st.session_state["clear_add_inputs"] = False
 
 
-@st.cache_resource(ttl=600)
-def get_supabase():
-    return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
-
-
-def load_data():
-    for attempt in range(2):
-        try:
-            sb = get_supabase()
-            res = sb.table("items").select("id, 名稱, 短宣隊, 單價, 所需數量, 已募集, 剩餘數量").order("id").execute()
-            if not res.data:
-                return pd.DataFrame(columns=["id", "名稱", "短宣隊", "單價", "所需數量", "已募集", "剩餘數量"])
-            return pd.DataFrame(res.data)
-        except httpx.TransportError:
-            if attempt == 0:
-                get_supabase.clear()
-            else:
-                raise
-
-
-def load_record():
-    for attempt in range(2):
-        try:
-            sb = get_supabase()
-            res = sb.table("records").select("id, 姓名, 物資, 數量, 總金額, 短宣隊, 奉獻方式").order("id").execute()
-            if not res.data:
-                return pd.DataFrame(columns=["id", "姓名", "物資", "數量", "總金額", "短宣隊", "奉獻方式"])
-            return pd.DataFrame(res.data)
-        except httpx.TransportError:
-            if attempt == 0:
-                get_supabase.clear()
-            else:
-                raise
-
-
-data = load_data()
-record = load_record()
+data = db.load_items()
+record = db.load_records()
 
 tab_overview, tab_manage, tab_record = st.tabs(["總覽", "管理項目", "管理認獻"])
 
@@ -79,8 +42,6 @@ with tab_overview:
     st.dataframe(record.drop(columns=["id"]), hide_index=True)
 
 with tab_manage:
-    sb = get_supabase()
-
     st.title("項目清單")
     st.dataframe(data.drop(columns=["id"]), hide_index=True)
 
@@ -99,14 +60,7 @@ with tab_manage:
         elif exists.any():
             st.error("已存在相同物資與短宣隊的項目")
         else:
-            sb.table("items").insert({
-                "名稱": item_name,
-                "短宣隊": team,
-                "單價": int(price),
-                "所需數量": int(required),
-                "已募集": 0,
-                "剩餘數量": int(required),
-            }).execute()
+            db.insert_item(item_name, team, int(price), int(required))
             st.success("已新增認獻項目")
             st.session_state["clear_add_inputs"] = True
             st.rerun()
@@ -126,13 +80,11 @@ with tab_manage:
         )
         if st.button("刪除"):
             item_db_id = int(data.loc[delete_idx, "id"])
-            sb.table("items").delete().eq("id", item_db_id).execute()
+            db.delete_item(item_db_id)
             st.success("已刪除認獻項目")
             st.rerun()
 
 with tab_record:
-    sb = get_supabase()
-
     st.title("認獻紀錄")
     if record.empty:
         st.info("目前沒有可編輯或刪除的認獻紀錄")
@@ -217,21 +169,18 @@ with tab_record:
                 else:
                     new_total = int(new_data.loc[new_id, "單價"]) * int(edit_number)
 
-                    sb.table("records").update({
-                        "姓名": edit_name,
-                        "物資": edit_item,
-                        "短宣隊": edit_team,
-                        "數量": int(edit_number),
-                        "總金額": new_total,
-                        "奉獻方式": edit_payment,
-                    }).eq("id", record_db_id).execute()
+                    db.update_record(
+                        record_db_id, edit_name, edit_item, int(edit_number),
+                        new_total, edit_team, edit_payment,
+                    )
 
                     for idx in affected_ids:
                         item_db_id = int(new_data.loc[idx, "id"])
-                        sb.table("items").update({
-                            "已募集": int(new_data.loc[idx, "已募集"]),
-                            "剩餘數量": int(new_data.loc[idx, "剩餘數量"]),
-                        }).eq("id", item_db_id).execute()
+                        db.update_item_counts(
+                            item_db_id,
+                            int(new_data.loc[idx, "已募集"]),
+                            int(new_data.loc[idx, "剩餘數量"]),
+                        )
 
                     st.success("已更新認獻紀錄")
                     st.rerun()
@@ -264,13 +213,14 @@ with tab_record:
                 ):
                     st.error("錯誤，調整後的數量不合理，無法刪除")
                 else:
-                    sb.table("records").delete().eq("id", record_db_id).execute()
+                    db.delete_record(record_db_id)
 
                     item_db_id = int(new_data.loc[old_id, "id"])
-                    sb.table("items").update({
-                        "已募集": int(new_data.loc[old_id, "已募集"]),
-                        "剩餘數量": int(new_data.loc[old_id, "剩餘數量"]),
-                    }).eq("id", item_db_id).execute()
+                    db.update_item_counts(
+                        item_db_id,
+                        int(new_data.loc[old_id, "已募集"]),
+                        int(new_data.loc[old_id, "剩餘數量"]),
+                    )
 
                     st.success("已刪除認獻紀錄")
                     st.rerun()
