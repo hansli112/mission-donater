@@ -4,7 +4,20 @@
 let _cachedToken = null;
 let _tokenExpiry = 0;
 
+function assertRequiredEnv(env) {
+  const missing = ['GCP_CLIENT_EMAIL', 'GCP_PRIVATE_KEY', 'SPREADSHEET_ID']
+    .filter((key) => !env?.[key]);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required env vars: ${missing.join(', ')}. Set them in Cloudflare secrets or local .dev.vars.`,
+    );
+  }
+}
+
 export async function getAccessToken(env) {
+  assertRequiredEnv(env);
+
   if (_cachedToken && Date.now() < _tokenExpiry) return _cachedToken;
 
   const now = Math.floor(Date.now() / 1000);
@@ -42,6 +55,7 @@ export async function getAccessToken(env) {
 }
 
 export async function makeClient(env) {
+  assertRequiredEnv(env);
   const token = await getAccessToken(env);
   return new SheetsClient(token, env.SPREADSHEET_ID);
 }
@@ -136,7 +150,8 @@ function b64urlBuf(buf) {
 }
 function strToBytes(str) { return new TextEncoder().encode(str); }
 function pemToDer(pem) {
-  const b64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s/g, '');
+  const normalizedPem = pem.replace(/\\n/g, '\n');
+  const b64 = normalizedPem.replace(/-----[^-]+-----/g, '').replace(/\s/g, '');
   const bin = atob(b64);
   const buf = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);

@@ -3,3 +3,6 @@ data.csv
 record.csv
 AGENTS.md
 .streamlit/secrets.toml
+.dev.vars
+node_modules/
+.wrangler/

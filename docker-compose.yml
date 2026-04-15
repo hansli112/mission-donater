@@ -1,10 +1,13 @@
-version: "3.9"
-
 services:
   app:
-    image: hansli112/mission-donater
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .dev.vars
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8788
     ports:
-      - "8501:8501"
-    volumes:
-      - ./data.csv:/app/data.csv
-      - ./record.csv:/app/record.csv
+      - "8788:8788"
+    restart: unless-stopped

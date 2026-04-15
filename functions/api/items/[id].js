@@ -1,4 +1,4 @@
-import { makeClient } from '../../../_shared/sheets.js';
+import { makeClient } from '../../_shared/sheets.js';
 
 // DELETE /api/items/:id
 export async function onRequestDelete({ params, env }) {

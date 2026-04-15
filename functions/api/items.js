@@ -1,4 +1,4 @@
-import { makeClient } from '../../_shared/sheets.js';
+import { makeClient } from '../_shared/sheets.js';
 
 const NUM_COLS = ['id', '單價', '所需數量', '已募集', '剩餘數量'];
 

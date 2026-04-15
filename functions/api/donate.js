@@ -1,4 +1,4 @@
-import { makeClient } from '../../_shared/sheets.js';
+import { makeClient } from '../_shared/sheets.js';
 
 // POST /api/donate — public
 export async function onRequestPost({ request, env }) {

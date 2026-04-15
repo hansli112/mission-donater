@@ -1,4 +1,4 @@
-import { makeClient } from '../../_shared/sheets.js';
+import { makeClient } from '../_shared/sheets.js';
 
 const NUM_COLS = ['id', '數量', '總金額'];
 

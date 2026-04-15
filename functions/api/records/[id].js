@@ -1,4 +1,4 @@
-import { makeClient } from '../../../_shared/sheets.js';
+import { makeClient } from '../../_shared/sheets.js';
 
 // PUT /api/records/:id
 export async function onRequestPut({ params, request, env }) {

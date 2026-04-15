@@ -1,3 +1,8 @@
 .venv
 __pycache__
 *.pyc
+node_modules
+.git
+.codex
+.wrangler
+.dev.vars
