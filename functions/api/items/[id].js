@@ -1,10 +1,7 @@
 import { makeClient } from '../../../_shared/sheets.js';
 
-// DELETE /api/items/:id — admin only
-export async function onRequestDelete({ params, request, env }) {
-  const pw = request.headers.get('X-Admin-Password');
-  if (!pw || pw !== env.ADMIN_PASSWORD) return json({ error: 'Unauthorized' }, 401);
-
+// DELETE /api/items/:id
+export async function onRequestDelete({ params, env }) {
   try {
     const id = parseInt(params.id);
     const client = await makeClient(env);

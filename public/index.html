@@ -207,8 +207,8 @@ async function submitDonation() {
     const data = await res.json();
     if (!res.ok || !data.ok) { showError(data.error || '送出失敗，請再試一次'); return; }
     receipt = data.receipt;
-    items = await loadItems();
     render();
+    try { items = await loadItems(); } catch (_) {}
   } catch (e) {
     showError('網路錯誤，請再試一次');
   } finally {

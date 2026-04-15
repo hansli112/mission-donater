@@ -7,11 +7,8 @@ function castRecord(row) {
   return row;
 }
 
-// GET /api/records — admin only
-export async function onRequestGet({ request, env }) {
-  const pw = request.headers.get('X-Admin-Password');
-  if (!pw || pw !== env.ADMIN_PASSWORD) return json({ error: 'Unauthorized' }, 401);
-
+// GET /api/records
+export async function onRequestGet({ env }) {
   try {
     const client = await makeClient(env);
     const rows = (await client.getAll('records')).map(castRecord);

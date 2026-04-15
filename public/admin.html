@@ -11,15 +11,6 @@
     h1 { font-size: 22px; font-weight: 700; color: #1e4d35; margin-bottom: 20px; }
     h2 { font-size: 16px; font-weight: 600; color: #2f6f4e; margin: 20px 0 10px; }
 
-    /* password modal */
-    #pw-modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 100; }
-    .pw-box { background: #fff; border-radius: 14px; padding: 28px 24px; width: 320px; box-shadow: 0 8px 30px rgba(0,0,0,.2); }
-    .pw-box h2 { color: #1e4d35; margin-bottom: 14px; }
-    .pw-box input { width: 100%; padding: 10px 12px; border: 1.5px solid #b2d8c5; border-radius: 8px; font-size: 15px; outline: none; margin-bottom: 12px; }
-    .pw-box input:focus { border-color: #2f6f4e; }
-    .pw-box button { width: 100%; }
-    #pw-error { color: #8b1a1a; font-size: 13px; margin-bottom: 8px; }
-
     /* tabs */
     .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid #b2d8c5; }
     .tab { padding: 9px 18px; cursor: pointer; border-radius: 8px 8px 0 0; font-size: 14px; font-weight: 600; color: #2f6f4e; background: transparent; border: none; transition: background .12s; }
@@ -62,17 +53,7 @@
 </head>
 <body>
 
-<!-- Password modal -->
-<div id="pw-modal">
-  <div class="pw-box">
-    <h2>管理員登入</h2>
-    <div id="pw-error"></div>
-    <input type="password" id="pw-input" placeholder="請輸入密碼" onkeydown="if(event.key==='Enter')login()">
-    <button class="btn btn-primary" onclick="login()" style="width:100%">登入</button>
-  </div>
-</div>
-
-<div class="container" id="main" style="display:none">
+<div class="container" id="main">
   <h1>短宣認獻管理</h1>
 
   <div class="tabs">
@@ -147,31 +128,10 @@
 </div>
 
 <script>
-let adminPw = '';
 let items = [], records = [];
 
-// ── auth ──────────────────────────────────────────────
-async function login() {
-  const pw = document.getElementById('pw-input').value;
-  const errEl = document.getElementById('pw-error');
-  errEl.textContent = '';
-  try {
-    const res = await fetch('/api/records', { headers: { 'X-Admin-Password': pw } });
-    if (res.status === 401) { errEl.textContent = '密碼錯誤'; return; }
-    if (!res.ok) { errEl.textContent = '伺服器錯誤，請稍後再試'; return; }
-    adminPw = pw;
-    document.getElementById('pw-modal').style.display = 'none';
-    document.getElementById('main').style.display = 'block';
-    records = await res.json();
-    items = await apiFetch('/api/items', 'GET');
-    renderAll();
-  } catch (e) {
-    errEl.textContent = '連線失敗，請稍後再試';
-  }
-}
-
 async function apiFetch(url, method, body) {
-  const opts = { method, headers: { 'X-Admin-Password': adminPw, 'Content-Type': 'application/json' } };
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(url, opts);
   const data = await res.json();
@@ -221,7 +181,7 @@ function renderAll() {
     `<option value="${escHtml(it['id'])}">${escHtml(it['名稱'])}（${escHtml(it['短宣隊'])}）</option>`
   ).join('');
   updateDelInfo();
-  delSel.addEventListener('change', updateDelInfo);
+  delSel.onchange = updateDelInfo;
 
   // 管理認獻
   document.getElementById('rec-list').innerHTML = recordsTable(records);
@@ -367,6 +327,15 @@ async function refresh() {
   ]);
   renderAll();
 }
+
+(async () => {
+  try {
+    await refresh();
+  } catch (e) {
+    document.getElementById('main').innerHTML =
+      `<div class="alert alert-error">載入失敗：${escHtml(e.message)}</div>`;
+  }
+})();
 </script>
 </body>
 </html>

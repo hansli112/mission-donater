@@ -21,9 +21,6 @@ export async function onRequestGet({ env }) {
 
 // POST /api/items — admin only
 export async function onRequestPost({ request, env }) {
-  const authErr = requireAdmin(env, request);
-  if (authErr) return authErr;
-
   try {
     const { 名稱, 短宣隊, 單價, 所需數量 } = await request.json();
     if (!名稱 || !短宣隊 || 單價 <= 0 || 所需數量 <= 0) {
@@ -42,14 +39,6 @@ export async function onRequestPost({ request, env }) {
   } catch (e) {
     return err(e);
   }
-}
-
-function requireAdmin(env, request) {
-  const pw = request.headers.get('X-Admin-Password');
-  if (!pw || pw !== env.ADMIN_PASSWORD) {
-    return json({ error: 'Unauthorized' }, 401);
-  }
-  return null;
 }
 
 function json(data, status = 200) {

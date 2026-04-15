@@ -1,9 +1,7 @@
 import { makeClient } from '../../../_shared/sheets.js';
 
-// PUT /api/records/:id — admin only
+// PUT /api/records/:id
 export async function onRequestPut({ params, request, env }) {
-  const pw = request.headers.get('X-Admin-Password');
-  if (!pw || pw !== env.ADMIN_PASSWORD) return json({ error: 'Unauthorized' }, 401);
 
   try {
     const recordId = parseInt(params.id);
@@ -57,10 +55,8 @@ export async function onRequestPut({ params, request, env }) {
   }
 }
 
-// DELETE /api/records/:id — admin only
+// DELETE /api/records/:id
 export async function onRequestDelete({ params, request, env }) {
-  const pw = request.headers.get('X-Admin-Password');
-  if (!pw || pw !== env.ADMIN_PASSWORD) return json({ error: 'Unauthorized' }, 401);
 
   try {
     const recordId = parseInt(params.id);
