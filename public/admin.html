@@ -164,6 +164,14 @@
     .alert-info { background: #f4ede6; color: #5c4d40; border: 1px solid #ddc9b7; }
     .loading { text-align: center; color: var(--brand); padding: 20px; }
 
+    /* spinner modal */
+    .spinner-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:999; align-items:center; justify-content:center; }
+    .spinner-overlay.active { display:flex; }
+    .spinner-box { background:#fff; border-radius:16px; padding:28px 36px; display:flex; flex-direction:column; align-items:center; gap:14px; box-shadow:0 8px 32px rgba(0,0,0,.18); }
+    .spinner-ring { width:36px; height:36px; border:4px solid #e8d5c8; border-top-color:var(--brand); border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .spinner-label { font-size:14px; color:var(--brand-deep); font-weight:600; }
+
   </style>
 </head>
 <body>
@@ -260,16 +268,32 @@
   </div>
 </div>
 
+<div class="spinner-overlay" id="spinner-overlay">
+  <div class="spinner-box">
+    <div class="spinner-ring"></div>
+    <div class="spinner-label">處理中...</div>
+  </div>
+</div>
+
 <script>
 let items = [], records = [], currentEditId = null, currentEditItemId = null;
+
+function showSpinner() { document.getElementById('spinner-overlay').classList.add('active'); }
+function hideSpinner() { document.getElementById('spinner-overlay').classList.remove('active'); }
 
 async function apiFetch(url, method, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(url, opts);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || '操作失敗');
-  return data;
+  const isWrite = method && method !== 'GET';
+  if (isWrite) showSpinner();
+  try {
+    const res = await fetch(url, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '操作失敗');
+    return data;
+  } finally {
+    if (isWrite) hideSpinner();
+  }
 }
 
 // ── tabs ──────────────────────────────────────────────
@@ -277,6 +301,13 @@ function switchTab(name) {
   document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', ['overview','manage','records'][i] === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById(`tab-${name}`).classList.add('active');
+
+  // clear edit state on tab switch
+  currentEditId = null;
+  currentEditItemId = null;
+  document.getElementById('rec-edit-section').style.display = 'none';
+  document.getElementById('item-edit-section').style.display = 'none';
+  document.querySelectorAll('tr.editing').forEach(r => r.classList.remove('editing'));
 }
 
 // ── render ────────────────────────────────────────────
