@@ -22,13 +22,22 @@ export async function onRequestPost({ request, env }) {
     const newRaised = Number(item['已募集']) + 數量;
     const newRemain = remaining - 數量;
 
-    // insert record
-    const recId = await client.nextId('records');
-    await client.append('records', [recId, 姓名, 物資, 數量, totalMoney, 短宣隊, 奉獻方式]);
-
-    // update item counts
+    // update item counts first — if record append fails we can compensate
     const itemRow = await client.findRow('items', item['id']);
     await client.updateRange(`items!F${itemRow}:G${itemRow}`, [newRaised, newRemain]);
+
+    // insert record — compensate item on failure
+    const recId = await client.nextId('records');
+    try {
+      await client.append('records', [recId, 姓名, 物資, 數量, totalMoney, 短宣隊, 奉獻方式]);
+    } catch (appendErr) {
+      try {
+        await client.updateRange(`items!F${itemRow}:G${itemRow}`, [item['已募集'], remaining]);
+      } catch (revertErr) {
+        console.error('CRITICAL: item revert failed after record append error', revertErr);
+      }
+      throw appendErr;
+    }
 
     return json({
       ok: true,
@@ -36,7 +45,7 @@ export async function onRequestPost({ request, env }) {
     });
   } catch (e) {
     console.error(e);
-    return json({ error: e.message }, 500);
+    return json({ error: 'internal error' }, 500);
   }
 }
 

@@ -20,7 +20,7 @@
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: "Segoe UI", sans-serif;
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", sans-serif;
       background:
         radial-gradient(circle at top, var(--bg-glow), transparent 38%),
         linear-gradient(180deg, #fbf6f0 0%, var(--bg) 100%);
@@ -39,6 +39,51 @@
     tr:last-child td { border-bottom: none; }
     tr:nth-child(even) td { background: var(--surface-alt); }
     .sold-out { color: var(--muted); }
+
+    /* sold-out badge */
+    .badge-done {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      background: #d4edda;
+      color: #1a6930;
+      border: 1px solid #a8d5b5;
+      border-radius: 20px;
+      padding: 1px 7px;
+      margin-left: 6px;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    /* progress bar */
+    .progress-wrap {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 120px;
+    }
+    .progress-label {
+      white-space: nowrap;
+      font-size: 13px;
+      color: var(--ink);
+    }
+    .progress-bar-track {
+      flex: 1;
+      height: 6px;
+      background: var(--line-soft);
+      border-radius: 99px;
+      overflow: hidden;
+      min-width: 48px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--brand);
+      border-radius: 99px;
+      transition: width .3s ease;
+    }
+    .progress-bar-fill.full {
+      background: #2e7d4f;
+    }
 
     /* divider */
     hr { border: none; border-top: 1px dashed var(--line); margin: 20px 0; }
@@ -70,6 +115,39 @@
       font-weight: 500;
     }
 
+    /* item info card */
+    .item-info-card {
+      display: flex;
+      gap: 12px;
+      background: var(--surface-alt);
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-top: 8px;
+    }
+    .item-info-card .info-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .item-info-card .info-stat .info-lbl {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .item-info-card .info-stat .info-val {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--brand-deep);
+    }
+    .item-info-card .info-divider {
+      width: 1px;
+      background: var(--line);
+      margin: 0 4px;
+    }
+
     /* button */
     button {
       width: 100%;
@@ -87,6 +165,17 @@
     button:hover { background: var(--brand-deep); transform: translateY(-1px); }
     button:disabled { background: #bfa391; cursor: not-allowed; transform: none; }
 
+    .btn-secondary {
+      background: transparent;
+      color: var(--brand);
+      border: 2px solid var(--brand);
+      margin-top: 12px;
+    }
+    .btn-secondary:hover {
+      background: var(--brand);
+      color: #fff;
+    }
+
     /* alerts */
     .alert { padding: 12px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
     .alert-error { background: #fde8e8; color: #8b1a1a; border: 1px solid #f5c0c0; }
@@ -99,14 +188,35 @@
     .receipt-row:last-child { border-bottom: none; padding-bottom: 0; }
     .receipt-row .lbl { color: var(--brand); font-weight: 600; }
 
-    .loading { text-align: center; color: var(--brand); padding: 20px; font-size: 15px; }
+    /* loading spinner */
+    .loading {
+      text-align: center;
+      color: var(--brand);
+      padding: 28px 20px;
+      font-size: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--line-soft);
+      border-top-color: var(--brand);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
 <div class="container">
   <h1>短宣募資</h1>
   <div id="app">
-    <div class="loading">載入中...</div>
+    <div class="loading"><div class="spinner"></div>載入中...</div>
   </div>
 </div>
 
@@ -132,13 +242,25 @@ function render() {
 
   if (items.length > 0) {
     html += `<h2>認獻項目一覽</h2><div class="table-wrap"><table>
-      <thead><tr><th>名稱</th><th>短宣隊</th><th>單價</th><th>所需</th><th>已募集</th><th>剩餘</th></tr></thead><tbody>`;
+      <thead><tr><th>名稱</th><th>短宣隊</th><th>單價</th><th>所需</th><th>進度</th></tr></thead><tbody>`;
     for (const it of items) {
       const sold = it['剩餘數量'] === 0;
+      const pct = it['所需數量'] > 0 ? Math.round(it['已募集'] / it['所需數量'] * 100) : 0;
+      const clampedPct = Math.min(pct, 100);
+      const badgeHtml = sold ? '<span class="badge-done">已完成 ✓</span>' : '';
       html += `<tr class="${sold ? 'sold-out' : ''}">
-        <td>${escHtml(it['名稱'])}</td><td>${escHtml(it['短宣隊'])}</td>
-        <td>$${it['單價']}</td><td>${it['所需數量']}</td>
-        <td>${it['已募集']}</td><td>${it['剩餘數量']}</td>
+        <td>${escHtml(it['名稱'])}${badgeHtml}</td>
+        <td>${escHtml(it['短宣隊'])}</td>
+        <td>$${it['單價']}</td>
+        <td>${it['所需數量']}</td>
+        <td>
+          <div class="progress-wrap">
+            <span class="progress-label">${it['已募集']}/${it['所需數量']}</span>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill${clampedPct >= 100 ? ' full' : ''}" style="width:${clampedPct}%"></div>
+            </div>
+          </div>
+        </td>
       </tr>`;
     }
     html += '</tbody></table></div><hr>';
@@ -152,7 +274,8 @@ function render() {
       <div class="receipt-row"><span class="lbl">數量</span><span>${receipt['數量']}</span></div>
       <div class="receipt-row"><span class="lbl">奉獻方式</span><span>${escHtml(receipt['奉獻方式'])}</span></div>
       <div class="receipt-row"><span class="lbl">總金額</span><span>$${receipt['總金額']}</span></div>
-    </div>`;
+    </div>
+    <button class="btn-secondary" onclick="receipt = null; render()">重新認獻</button>`;
     app.innerHTML = html;
     return;
   }
@@ -172,11 +295,11 @@ function render() {
     <label for="item-select">物資</label>
     <select id="item-select">`;
   for (const it of available) {
-    html += `<option value="${escHtml(it['名稱'])}|${escHtml(it['短宣隊'])}">${escHtml(it['名稱'])}（${escHtml(it['短宣隊'])}）</option>`;
+    html += `<option value="${it['id']}">${escHtml(it['名稱'])}（${escHtml(it['短宣隊'])}）</option>`;
   }
   html += `</select>
   </div>
-  <div id="item-info" class="hint"></div>
+  <div id="item-info"></div>
   <hr>
   <div class="form-group">
     <label for="payment">奉獻方式</label>
@@ -206,8 +329,8 @@ function render() {
 function getSelectedItem() {
   const sel = document.getElementById('item-select');
   if (!sel) return null;
-  const [name, team] = sel.value.split('|');
-  return items.find(it => it['名稱'] === name && it['短宣隊'] === team);
+  const id = Number(sel.value);
+  return items.find(it => it['id'] === id);
 }
 
 function updateItemInfo() {
@@ -215,7 +338,17 @@ function updateItemInfo() {
   const info = document.getElementById('item-info');
   const qty = document.getElementById('qty');
   if (!it || !info || !qty) return;
-  info.textContent = `金額：$${it['單價']}/份　剩餘：${it['剩餘數量']} 份`;
+  info.innerHTML = `<div class="item-info-card">
+    <div class="info-stat">
+      <span class="info-lbl">單價</span>
+      <span class="info-val">$${it['單價']}</span>
+    </div>
+    <div class="info-divider"></div>
+    <div class="info-stat">
+      <span class="info-lbl">剩餘數量</span>
+      <span class="info-val">${it['剩餘數量']} 份</span>
+    </div>
+  </div>`;
   qty.max = it['剩餘數量'];
   updateTotal();
 }

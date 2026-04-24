@@ -50,5 +50,5 @@ function json(data, status = 200) {
 
 function err(e) {
   console.error(e);
-  return json({ error: e.message }, 500);
+  return json({ error: 'internal error' }, 500);
 }
