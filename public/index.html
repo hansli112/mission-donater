@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>短宣募資</title>
+  <title>短宣認獻</title>
   <style>
     :root {
       --bg: #f6efe6;
@@ -226,7 +226,7 @@
   </div>
 </div>
 <div class="container">
-  <h1>短宣募資</h1>
+  <h1>短宣認獻</h1>
   <div id="app">
     <div class="loading"><div class="spinner"></div>載入中...</div>
   </div>
@@ -253,8 +253,8 @@ function render() {
   let html = '';
 
   if (items.length > 0) {
-    html += `<h2>認獻項目一覽</h2><div class="table-wrap"><table>
-      <thead><tr><th>名稱</th><th>短宣隊</th><th>單價</th><th>所需</th><th>進度</th></tr></thead><tbody>`;
+    html += `<h2>認獻項目</h2><div class="table-wrap"><table>
+      <thead><tr><th>名稱</th><th>短宣隊</th><th>單價</th><th>所需數量</th><th>進度</th></tr></thead><tbody>`;
     for (const it of items) {
       const sold = it['剩餘數量'] === 0;
       const pct = it['所需數量'] > 0 ? Math.round(it['已募集'] / it['所需數量'] * 100) : 0;
@@ -280,14 +280,14 @@ function render() {
 
   if (receipt) {
     html += `<div class="receipt">
-      <h3>成功送出</h3>
+      <h3>認獻已登記</h3>
       <div class="receipt-row"><span class="lbl">姓名</span><span>${escHtml(receipt['姓名'])}</span></div>
       <div class="receipt-row"><span class="lbl">物資</span><span>${escHtml(receipt['物資'])}（${escHtml(receipt['短宣隊'])}）</span></div>
       <div class="receipt-row"><span class="lbl">數量</span><span>${receipt['數量']}</span></div>
       <div class="receipt-row"><span class="lbl">奉獻方式</span><span>${escHtml(receipt['奉獻方式'])}</span></div>
       <div class="receipt-row"><span class="lbl">總金額</span><span>$${receipt['總金額']}</span></div>
     </div>
-    <button class="btn-secondary" onclick="receipt = null; render()">重新認獻</button>`;
+    <button class="btn-secondary" onclick="receipt = null; render()">再次認獻</button>`;
     app.innerHTML = html;
     return;
   }
@@ -326,7 +326,7 @@ function render() {
     <input type="number" id="qty" min="1" value="1">
   </div>
   <div id="total-hint" class="hint"></div>
-  <button id="submit-btn" onclick="submitDonation()">送出</button>`;
+  <button id="submit-btn" onclick="submitDonation()">送出認獻</button>`;
 
   app.innerHTML = html;
   updateItemInfo();
@@ -376,7 +376,7 @@ function updateTotal() {
     hint.innerHTML = `<div class="alert alert-error">數量不能超過剩餘 ${it['剩餘數量']} 份</div>`;
     if (btn) btn.disabled = true;
   } else if (qty > 0) {
-    hint.textContent = `總金額：$${it['單價'] * qty}`;
+    hint.textContent = `總金額 $${it['單價'] * qty}`;
     if (btn) btn.disabled = false;
   } else {
     hint.textContent = '';
@@ -400,7 +400,7 @@ async function submitDonation() {
   const payment = paymentEl.value;
 
   if (!name) { showError('請輸入姓名'); return; }
-  if (!qty || qty <= 0 || qty > it['剩餘數量']) { showError('請檢查數量'); return; }
+  if (!qty || qty <= 0 || qty > it['剩餘數量']) { showError(`數量需在 1 至 ${it['剩餘數量']} 份之間`); return; }
 
   btn.disabled = true;
   document.getElementById('spinner-overlay').classList.add('active');
