@@ -199,6 +199,22 @@
     <div id="del-msg"></div>
     <div id="mg-items"><div class="loading">載入中...</div></div>
 
+    <div id="item-edit-section" style="display:none">
+      <hr>
+      <h2>編輯項目</h2>
+      <div id="item-edit-msg"></div>
+      <div id="item-edit-target-label" class="edit-target-label"></div>
+      <div class="row2">
+        <div class="form-group"><label>物資名稱</label><input type="text" id="edit-item-name"></div>
+        <div class="form-group"><label>短宣隊</label><input type="text" id="edit-item-team"></div>
+      </div>
+      <div class="row2">
+        <div class="form-group"><label>單價</label><input type="number" id="edit-item-price" min="1"></div>
+        <div class="form-group"><label>所需數量</label><input type="number" id="edit-item-required" min="1"></div>
+      </div>
+      <button class="btn btn-primary" id="save-item-btn" onclick="saveItem()">儲存變更</button>
+    </div>
+
     <hr>
     <h2>新增項目</h2>
     <div id="add-msg"></div>
@@ -245,7 +261,7 @@
 </div>
 
 <script>
-let items = [], records = [], currentEditId = null;
+let items = [], records = [], currentEditId = null, currentEditItemId = null;
 
 async function apiFetch(url, method, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
@@ -281,9 +297,12 @@ function itemsTableWithDelete(rows) {
   if (!rows.length) return '<div class="alert alert-info">目前沒有認獻項目</div>';
   return `<div class="table-wrap"><table>
     <thead><tr><th>名稱</th><th>短宣隊</th><th>單價</th><th>所需</th><th>已募集</th><th>剩餘</th><th></th></tr></thead>
-    <tbody>${rows.map(it => `<tr><td>${escHtml(it['名稱'])}</td><td>${escHtml(it['短宣隊'])}</td>
+    <tbody>${rows.map(it => `<tr id="item-row-${it['id']}"><td>${escHtml(it['名稱'])}</td><td>${escHtml(it['短宣隊'])}</td>
       <td>$${it['單價']}</td><td>${it['所需數量']}</td><td>${it['已募集']}</td><td>${it['剩餘數量']}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="deleteItemById(${it['id']})">刪除</button></td></tr>`).join('')}
+      <td><div style="display:flex;gap:6px;justify-content:flex-end">
+        <button class="btn btn-primary btn-sm" onclick="startEditItem(${it['id']})">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteItemById(${it['id']})">刪除</button>
+      </div></td></tr>`).join('')}
     </tbody></table></div>`;
 }
 
@@ -302,7 +321,7 @@ function recordsTableWithEdit(rows) {
     <thead><tr><th>#</th><th>姓名</th><th>物資</th><th>短宣隊</th><th>數量</th><th>總金額</th><th>奉獻方式</th><th></th></tr></thead>
     <tbody>${rows.map((r, i) => `<tr id="rec-row-${r['id']}"><td>${i+1}</td><td>${escHtml(r['姓名'])}</td><td>${escHtml(r['物資'])}</td>
       <td>${escHtml(r['短宣隊'])}</td><td>${r['數量']}</td><td>$${r['總金額']}</td><td>${escHtml(r['奉獻方式'])}</td>
-      <td><button class="btn btn-primary btn-sm" onclick="startEditRecord(${r['id']})">編輯</button></td></tr>`).join('')}
+      <td style="text-align:right"><button class="btn btn-primary btn-sm" onclick="startEditRecord(${r['id']})">編輯</button></td></tr>`).join('')}
     </tbody></table></div>`;
 }
 
@@ -319,6 +338,15 @@ function renderAll() {
 
   // 管理項目
   document.getElementById('mg-items').innerHTML = itemsTableWithDelete(items);
+  if (currentEditItemId !== null) {
+    if (!items.find(it => it['id'] === currentEditItemId)) {
+      currentEditItemId = null;
+      document.getElementById('item-edit-section').style.display = 'none';
+    } else {
+      const row = document.getElementById(`item-row-${currentEditItemId}`);
+      if (row) row.classList.add('editing');
+    }
+  }
 
   // 管理認獻
   document.getElementById('rec-list').innerHTML = recordsTableWithEdit(records);
@@ -374,6 +402,56 @@ function startEditRecord(id) {
   const section = document.getElementById('rec-edit-section');
   section.style.display = 'block';
   section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function startEditItem(id) {
+  const item = items.find(it => it['id'] === id);
+  if (!item) return;
+  currentEditItemId = id;
+
+  document.getElementById('edit-item-name').value = item['名稱'];
+  document.getElementById('edit-item-team').value = item['短宣隊'];
+  document.getElementById('edit-item-price').value = item['單價'];
+  document.getElementById('edit-item-required').value = item['所需數量'];
+
+  document.getElementById('item-edit-msg').innerHTML = '';
+  document.getElementById('item-edit-target-label').innerHTML =
+    `目前編輯：<strong>${escHtml(item['名稱'])}</strong>（${escHtml(item['短宣隊'])}）`;
+
+  document.querySelectorAll('#mg-items tr.editing').forEach(r => r.classList.remove('editing'));
+  const row = document.getElementById(`item-row-${id}`);
+  if (row) row.classList.add('editing');
+
+  const section = document.getElementById('item-edit-section');
+  section.style.display = 'block';
+  section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function saveItem() {
+  const btn = document.getElementById('save-item-btn');
+  const msgEl = document.getElementById('item-edit-msg');
+  msgEl.innerHTML = '';
+
+  const id = currentEditItemId;
+  if (!id) return;
+
+  const 名稱 = document.getElementById('edit-item-name').value.trim();
+  const 短宣隊 = document.getElementById('edit-item-team').value.trim();
+  const 單價 = parseInt(document.getElementById('edit-item-price').value, 10);
+  const 所需數量 = parseInt(document.getElementById('edit-item-required').value, 10);
+
+  if (!名稱 || !短宣隊 || !單價 || 單價 <= 0 || !所需數量 || 所需數量 <= 0) {
+    msgEl.innerHTML = '<div class="alert alert-error">請檢查名稱、短宣隊、單價或所需數量</div>'; return;
+  }
+  btn.disabled = true;
+  try {
+    await apiFetch(`/api/items/${id}`, 'PUT', { 名稱, 短宣隊, 單價, 所需數量 });
+    currentEditItemId = null;
+    document.getElementById('item-edit-section').style.display = 'none';
+    await refresh();
+  } catch (e) {
+    msgEl.innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
+  } finally { btn.disabled = false; }
 }
 
 async function deleteItemById(id) {

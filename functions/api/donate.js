@@ -29,7 +29,9 @@ export async function onRequestPost({ request, env }) {
     // insert record — compensate item on failure
     const recId = await client.nextId('records');
     try {
-      await client.append('records', [recId, 姓名, 物資, 數量, totalMoney, 短宣隊, 奉獻方式]);
+      const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
+      const createdAt = now.toISOString().replace('T', ' ').replace('Z', '+08:00');
+      await client.append('records', [recId, createdAt, 姓名, 物資, 數量, totalMoney, 短宣隊, 奉獻方式]);
     } catch (appendErr) {
       try {
         await client.updateRange(`items!F${itemRow}:G${itemRow}`, [item['已募集'], remaining]);

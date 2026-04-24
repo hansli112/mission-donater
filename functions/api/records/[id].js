@@ -54,7 +54,7 @@ export async function onRequestPut({ params, request, env }) {
     }
 
     const recRow = await client.findRow('records', recordId);
-    await client.updateRange(`records!B${recRow}:G${recRow}`, [姓名, 物資, 數量, newTotal, 短宣隊, 奉獻方式]);
+    await client.updateRange(`records!C${recRow}:H${recRow}`, [姓名, 物資, 數量, newTotal, 短宣隊, 奉獻方式]);
 
     return json({ ok: true });
   } catch (e) {

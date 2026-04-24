@@ -357,9 +357,19 @@ function updateTotal() {
   const it = getSelectedItem();
   const qtyEl = document.getElementById('qty');
   const hint = document.getElementById('total-hint');
+  const btn = document.getElementById('submit-btn');
   if (!it || !qtyEl || !hint) return;
   const qty = parseInt(qtyEl.value) || 0;
-  hint.textContent = `總金額：$${it['單價'] * qty}`;
+  if (qty > it['剩餘數量']) {
+    hint.innerHTML = `<span style="color:#8b1a1a;font-weight:600">數量不能超過剩餘 ${it['剩餘數量']} 份</span>`;
+    if (btn) btn.disabled = true;
+  } else if (qty > 0) {
+    hint.textContent = `總金額：$${it['單價'] * qty}`;
+    if (btn) btn.disabled = false;
+  } else {
+    hint.textContent = '';
+    if (btn) btn.disabled = true;
+  }
 }
 
 async function submitDonation() {
