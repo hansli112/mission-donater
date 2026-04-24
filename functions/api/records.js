@@ -16,7 +16,7 @@ export async function onRequestGet({ env }) {
     return json(rows);
   } catch (e) {
     console.error(e);
-    return json({ error: e.message }, 500);
+    return json({ error: 'internal error' }, 500);
   }
 }
 

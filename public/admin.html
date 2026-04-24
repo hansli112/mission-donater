@@ -210,7 +210,7 @@
       </div>
       <div class="row2">
         <div class="form-group"><label>單價</label><input type="number" id="edit-item-price" min="1"></div>
-        <div class="form-group"><label>所需數量</label><input type="number" id="edit-item-required" min="1"></div>
+        <div class="form-group"><label>所需數量</label><input type="number" id="edit-item-required" min="1"><div id="edit-item-required-hint" class="hint"></div></div>
       </div>
       <button class="btn btn-primary" id="save-item-btn" onclick="saveItem()">儲存變更</button>
     </div>
@@ -244,7 +244,7 @@
         <div class="form-group"><label>物資（短宣隊）</label><select id="edit-item"></select></div>
       </div>
       <div class="row2">
-        <div class="form-group"><label>數量</label><input type="number" id="edit-qty" min="1"></div>
+        <div class="form-group"><label>數量</label><input type="number" id="edit-qty" min="1"><div id="edit-qty-hint" class="hint"></div></div>
         <div class="form-group"><label>奉獻方式</label>
           <select id="edit-payment">
             <option value="現金">現金</option>
@@ -373,6 +373,30 @@ function buildEditItemSelect() {
   ).join('');
 }
 
+function updateEditQtyHint() {
+  const itemId = Number(document.getElementById('edit-item').value);
+  const selectedItem = items.find(it => it['id'] === itemId);
+  const rec = records.find(r => r['id'] === currentEditId);
+  const qty = parseInt(document.getElementById('edit-qty').value, 10);
+  const hintEl = document.getElementById('edit-qty-hint');
+  const btn = document.getElementById('save-btn');
+  if (!hintEl || !selectedItem || !rec) return;
+
+  // available = item's current remaining + this record's original qty (since we're editing it)
+  const sameItem = selectedItem['名稱'] === rec['物資'] && selectedItem['短宣隊'] === rec['短宣隊'];
+  const available = sameItem
+    ? Number(selectedItem['剩餘數量']) + Number(rec['數量'])
+    : Number(selectedItem['剩餘數量']);
+
+  if (qty > available) {
+    hintEl.innerHTML = `<div class="alert alert-error">數量不能超過可用數量（${available} 份）</div>`;
+    if (btn) btn.disabled = true;
+  } else {
+    hintEl.innerHTML = '';
+    if (btn) btn.disabled = false;
+  }
+}
+
 function startEditRecord(id) {
   const rec = records.find(r => r['id'] === id);
   if (!rec) return;
@@ -381,6 +405,9 @@ function startEditRecord(id) {
   document.getElementById('edit-name').value = rec['姓名'];
   document.getElementById('edit-qty').value = rec['數量'];
   document.getElementById('edit-payment').value = rec['奉獻方式'];
+  document.getElementById('edit-qty-hint').innerHTML = '';
+  document.getElementById('edit-qty').oninput = updateEditQtyHint;
+  document.getElementById('edit-item').onchange = updateEditQtyHint;
   const itemSel = document.getElementById('edit-item');
   const matchItem = items.find(it => it['名稱'] === rec['物資'] && it['短宣隊'] === rec['短宣隊']);
   if (matchItem) {
@@ -404,6 +431,23 @@ function startEditRecord(id) {
   section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+function updateEditItemRequiredHint() {
+  const item = items.find(it => it['id'] === currentEditItemId);
+  if (!item) return;
+  const raised = Number(item['已募集']);
+  const val = parseInt(document.getElementById('edit-item-required').value, 10);
+  const hintEl = document.getElementById('edit-item-required-hint');
+  const btn = document.getElementById('save-item-btn');
+  if (!hintEl) return;
+  if (val < raised) {
+    hintEl.innerHTML = `<div class="alert alert-error">所需數量不能少於已募集數量（${raised} 份）</div>`;
+    if (btn) btn.disabled = true;
+  } else {
+    hintEl.innerHTML = '';
+    if (btn) btn.disabled = false;
+  }
+}
+
 function startEditItem(id) {
   const item = items.find(it => it['id'] === id);
   if (!item) return;
@@ -413,6 +457,8 @@ function startEditItem(id) {
   document.getElementById('edit-item-team').value = item['短宣隊'];
   document.getElementById('edit-item-price').value = item['單價'];
   document.getElementById('edit-item-required').value = item['所需數量'];
+  document.getElementById('edit-item-required-hint').innerHTML = '';
+  document.getElementById('edit-item-required').oninput = updateEditItemRequiredHint;
 
   document.getElementById('item-edit-msg').innerHTML = '';
   document.getElementById('item-edit-target-label').innerHTML =
