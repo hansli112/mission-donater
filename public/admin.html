@@ -171,6 +171,13 @@
     .spinner-ring { width:36px; height:36px; border:4px solid #e8d5c8; border-top-color:var(--brand); border-radius:50%; animation:spin .7s linear infinite; }
     @keyframes spin { to { transform:rotate(360deg); } }
     .spinner-label { font-size:14px; color:var(--brand-deep); font-weight:600; }
+    /* reset modal */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000; align-items:center; justify-content:center; padding:16px; }
+    .modal-overlay.active { display:flex; }
+    .modal-box { background:#fff; border-radius:16px; padding:28px; max-width:420px; width:100%; box-shadow:0 8px 32px rgba(0,0,0,.25); }
+    .modal-box h3 { color:#8b1a1a; margin:0 0 8px; font-size:18px; }
+    .modal-box p { font-size:13px; color:#555; margin:0 0 16px; line-height:1.6; }
+    .modal-actions { display:flex; gap:10px; justify-content:flex-end; }
 
   </style>
 </head>
@@ -265,6 +272,12 @@
         <button class="btn btn-danger" id="del-rec-btn" onclick="deleteRecord()">刪除這筆紀錄</button>
       </div>
     </div>
+
+    <div style="margin-top:40px;padding-top:20px;border-top:2px dashed #f5c0c0">
+      <h2 style="color:#8b1a1a">危險操作</h2>
+      <p style="font-size:13px;color:#666;margin:4px 0 12px">清除所有認獻紀錄，並將所有項目的已募集數量歸零。適合每次短宣結束後重新開始。</p>
+      <button class="btn btn-danger" onclick="openResetModal()">重置所有資料</button>
+    </div>
   </div>
 </div>
 
@@ -272,6 +285,18 @@
   <div class="spinner-box">
     <div class="spinner-ring"></div>
     <div class="spinner-label">處理中...</div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reset-modal">
+  <div class="modal-box">
+    <h3>重置所有資料</h3>
+    <p>此操作將刪除所有認獻紀錄，並將所有項目的已募集數量歸零。<br><strong>此操作無法復原。</strong></p>
+    <div id="reset-countdown" style="font-size:13px;color:#999;margin-bottom:16px"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeResetModal()" style="background:#eee;color:#333">取消</button>
+      <button class="btn btn-danger" id="reset-confirm-btn" onclick="executeReset()" disabled>確認重置</button>
+    </div>
   </div>
 </div>
 
@@ -352,7 +377,10 @@ function recordsTableWithEdit(rows) {
     <thead><tr><th>#</th><th>姓名</th><th>物資</th><th>短宣隊</th><th>數量</th><th>總金額</th><th>奉獻方式</th><th></th></tr></thead>
     <tbody>${rows.map((r, i) => `<tr id="rec-row-${r['id']}"><td>${i+1}</td><td>${escHtml(r['姓名'])}</td><td>${escHtml(r['物資'])}</td>
       <td>${escHtml(r['短宣隊'])}</td><td>${r['數量']}</td><td>$${r['總金額']}</td><td>${escHtml(r['奉獻方式'])}</td>
-      <td style="text-align:right"><button class="btn btn-primary btn-sm" onclick="startEditRecord(${r['id']})">編輯</button></td></tr>`).join('')}
+      <td><div style="display:flex;gap:6px;justify-content:flex-end">
+        <button class="btn btn-primary btn-sm" onclick="startEditRecord(${r['id']})">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteRecordById(${r['id']})">刪除</button>
+      </div></td></tr>`).join('')}
     </tbody></table></div>`;
 }
 
@@ -622,6 +650,58 @@ async function deleteRecord() {
   } catch (e) {
     msgEl.innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
   } finally { btn.disabled = false; }
+}
+
+async function deleteRecordById(id) {
+  if (!confirm('確定要刪除這筆認獻紀錄嗎？')) return;
+  try {
+    await apiFetch(`/api/records/${id}`, 'DELETE');
+    if (currentEditId === id) {
+      currentEditId = null;
+      document.getElementById('rec-edit-section').style.display = 'none';
+    }
+    await refresh();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+let _resetTimer = null;
+
+function openResetModal() {
+  const btn = document.getElementById('reset-confirm-btn');
+  const countdown = document.getElementById('reset-countdown');
+  btn.disabled = true;
+  document.getElementById('reset-modal').classList.add('active');
+
+  let sec = 3;
+  countdown.textContent = `請等待 ${sec} 秒...`;
+  clearInterval(_resetTimer);
+  _resetTimer = setInterval(() => {
+    sec--;
+    if (sec <= 0) {
+      clearInterval(_resetTimer);
+      countdown.textContent = '';
+      btn.disabled = false;
+    } else {
+      countdown.textContent = `請等待 ${sec} 秒...`;
+    }
+  }, 1000);
+}
+
+function closeResetModal() {
+  clearInterval(_resetTimer);
+  document.getElementById('reset-modal').classList.remove('active');
+}
+
+async function executeReset() {
+  closeResetModal();
+  try {
+    await apiFetch('/api/reset', 'POST');
+    await refresh();
+  } catch (e) {
+    alert(e.message);
+  }
 }
 
 async function refresh() {
