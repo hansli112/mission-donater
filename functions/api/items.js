@@ -23,7 +23,7 @@ export async function onRequestGet({ env }) {
 export async function onRequestPost({ request, env }) {
   try {
     const { 名稱, 短宣隊, 單價, 所需數量 } = await request.json();
-    if (!名稱 || !短宣隊 || 單價 <= 0 || 所需數量 <= 0) {
+    if (!名稱 || !短宣隊 || !單價 || 單價 <= 0 || !所需數量 || 所需數量 <= 0) {
       return json({ error: '請檢查名稱、短宣隊、單價或所需數量' }, 400);
     }
 

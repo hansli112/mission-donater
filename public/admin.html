@@ -416,7 +416,6 @@ function renderAll() {
     if (!records.find(r => r['id'] === currentEditId)) {
       // 正在編輯的記錄已消失，收起表單
       currentEditId = null;
-      document.getElementById('rec-edit-section').style.display = 'none';
       document.getElementById('edit-msg').innerHTML =
         '<div class="alert alert-error">此筆紀錄已被刪除，無法繼續編輯。</div>';
       document.getElementById('rec-edit-section').style.display = 'block';
@@ -471,6 +470,8 @@ function startEditRecord(id) {
   document.getElementById('edit-item').onchange = updateEditQtyHint;
   const itemSel = document.getElementById('edit-item');
   const matchItem = items.find(it => it['名稱'] === rec['物資'] && it['短宣隊'] === rec['短宣隊']);
+
+  document.getElementById('edit-msg').innerHTML = '';
   if (matchItem) {
     itemSel.value = matchItem['id'];
   } else {
@@ -478,7 +479,6 @@ function startEditRecord(id) {
       '<div class="alert alert-error">此認獻對應的物資已不存在，請重新選擇物資。</div>';
   }
 
-  document.getElementById('edit-msg').innerHTML = '';
   document.getElementById('edit-target-label').innerHTML =
     `正在編輯：<strong>${escHtml(rec['姓名'])}</strong> — ${escHtml(rec['物資'])}（${escHtml(rec['短宣隊'])}）x${rec['數量']}`;
 
@@ -623,7 +623,6 @@ async function saveRecord() {
   btn.disabled = true;
   try {
     await apiFetch(`/api/records/${id}`, 'PUT', { 姓名, 物資, 短宣隊, 數量, 奉獻方式 });
-    msgEl.innerHTML = '<div class="alert alert-success">已更新認獻紀錄</div>';
     currentEditId = null;
     document.getElementById('rec-edit-section').style.display = 'none';
     await refresh();
@@ -647,7 +646,6 @@ async function deleteRecord() {
     await apiFetch(`/api/records/${id}`, 'DELETE');
     currentEditId = null;
     document.getElementById('rec-edit-section').style.display = 'none';
-    msgEl.innerHTML = '<div class="alert alert-success">已刪除認獻紀錄</div>';
     await refresh();
   } catch (e) {
     msgEl.innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
