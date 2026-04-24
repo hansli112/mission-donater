@@ -1,6 +1,9 @@
 name = "mission-donater"
-pages_build_output_dir = "public"
+main = "./dist/worker/index.js"
 compatibility_date = "2024-09-23"
+
+[assets]
+directory = "./public"
 
 # Secrets (set via Cloudflare Dashboard or `wrangler secret put`):
 # GCP_CLIENT_EMAIL — service account client_email

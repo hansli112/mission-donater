@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "wrangler pages functions build --outdir=./dist/worker",
     "dev": "node scripts/dev-server.mjs --port 8788",
     "dev:lan": "node scripts/dev-server.mjs --host 0.0.0.0 --port 8788",
     "dev:cf": "wrangler pages dev public --local --port 8788",
